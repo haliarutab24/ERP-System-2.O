@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,8 @@ import {
   Menu,
   X,
   LogOut,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,7 +32,15 @@ import { toast } from "sonner";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Inventory", href: "/inventory", icon: Package },
+  {
+    name: "Inventory",
+    href: "/inventory",
+    icon: Package,
+    subNav: [
+      { name: "Product Info", href: "/inventory/productinfo" },
+      { name: "Stock & Purchase", href: "/inventory/stock-purchase" },
+    ],
+  },
   { name: "Sales", href: "/sales", icon: ShoppingCart },
   { name: "Consignment", href: "/consignment", icon: Truck },
   { name: "Barcode", href: "/barcode", icon: Barcode },
@@ -42,8 +52,16 @@ const DashboardLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openSubNav, setOpenSubNav] = useState({});
 
   const selectedCompany = JSON.parse(localStorage.getItem("selectedCompany") || "{}");
+  const isInventoryActive = location.pathname.startsWith("/inventory");
+
+  useEffect(() => {
+    if (isInventoryActive) {
+      setOpenSubNav((prev) => ({ ...prev, Inventory: true }));
+    }
+  }, [isInventoryActive]);
 
   const handleLogout = () => {
     toast.success("Logged out successfully");
@@ -52,8 +70,8 @@ const DashboardLayout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Bar */}
-      <header className="sticky top-0 bg-card border-b border-border">
+      {/* Header */}
+      <header className="sticky top-0 bg-card border-b border-border z-50">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-4">
             <Button
@@ -62,18 +80,23 @@ const DashboardLayout = ({ children }) => {
               className="lg:hidden"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
-              {sidebarOpen ? <X /> : <Menu />}
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
             <div className="flex items-center gap-2">
               <Building2 className="w-6 h-6 text-primary" />
               <div className="hidden sm:block">
-                <h2 className="font-semibold text-foreground">{selectedCompany.name}</h2>
-                <p className="text-xs text-muted-foreground">{selectedCompany.role}</p>
+                <h2 className="font-semibold text-foreground">
+                  {selectedCompany.name || "Select Company"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {selectedCompany.role || "Role"}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Notifications */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -83,85 +106,30 @@ const DashboardLayout = ({ children }) => {
                   </Badge>
                 </Button>
               </DropdownMenuTrigger>
-
-              <DropdownMenuContent
-                align="end"
-                className="z-[9999] w-72 bg-gray-50 border border-border shadow-xl rounded-xl p-2"
-              >
-                <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
-                  Notifications
-                </DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-
-                {/* Dummy notifications */}
-                <DropdownMenuItem className="flex items-start gap-3 cursor-pointer hover:bg-muted px-3 py-2 rounded-md transition-colors">
-                  <div className="w-2 h-2 bg-primary rounded-full mt-1.5"></div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      New sales report available
-                    </p>
-                    <p className="text-xs text-muted-foreground">2 minutes ago</p>
-                  </div>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem className="flex items-start gap-3 cursor-pointer hover:bg-muted px-3 py-2 rounded-md transition-colors">
-                  <div className="w-2 h-2 bg-success rounded-full mt-1.5"></div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Inventory updated successfully
-                    </p>
-                    <p className="text-xs text-muted-foreground">10 minutes ago</p>
-                  </div>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem className="flex items-start gap-3 cursor-pointer hover:bg-muted px-3 py-2 rounded-md transition-colors">
-                  <div className="w-2 h-2 bg-destructive rounded-full mt-1.5"></div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Failed to sync with Toulouse branch
-                    </p>
-                    <p className="text-xs text-muted-foreground">30 minutes ago</p>
-                  </div>
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-center text-sm text-primary hover:bg-muted/50 cursor-pointer rounded-md">
-                  View all notifications
-                </DropdownMenuItem>
+                {/* Add items later */}
               </DropdownMenuContent>
             </DropdownMenu>
 
-
+            {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <User className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="z-[9999] bg-card/90 backdrop-blur-md border border-border shadow-lg rounded-lg p-1"
-              >
-                <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
-                  My Account
-                </DropdownMenuLabel>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => navigate('/company-selection')}
-                  className="flex items-center gap-2 hover:bg-muted hover:text-foreground px-3 py-2 rounded-md cursor-pointer"
-                >
-                  <Building2 className="w-4 h-4 text-primary" />
-                  Switch Company
+                <DropdownMenuItem onClick={() => navigate("/company-selection")}>
+                  <Building2 className="w-4 h-4 mr-2" /> Switch Company
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 hover:bg-destructive hover:text-white px-3 py-2 rounded-md cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" /> Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
-
             </DropdownMenu>
           </div>
         </div>
@@ -177,31 +145,86 @@ const DashboardLayout = ({ children }) => {
         >
           <nav className="flex flex-col gap-2 p-4">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isSubOpen =
+                openSubNav[item.name] || (isInventoryActive && item.name === "Inventory");
+
               return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-[#36BFFA] text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-ring"
+                <div key={item.name}>
+                  <NavLink
+                    to={item.href}
+                    onClick={(e) => {
+                      if (item.subNav) {
+                        e.preventDefault();
+                        setOpenSubNav((prev) => ({
+                          ...prev,
+                          [item.name]: !prev[item.name],
+                        }));
+                      }
+                      setSidebarOpen(false);
+                    }}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-[#36BFFA] text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-ring"
+                      )
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-5 h-5" />
+                      {item.name}
+                    </div>
+                    {item.subNav && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenSubNav((prev) => ({
+                            ...prev,
+                            [item.name]: !prev[item.name],
+                          }));
+                        }}
+                      >
+                        {isSubOpen ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                  </NavLink>
+
+                  {item.subNav && isSubOpen && (
+                    <div className="ml-8 mt-1 space-y-1">
+                      {item.subNav.map((sub) => (
+                        <NavLink
+                          key={sub.name}
+                          to={sub.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={({ isActive }) =>
+                            cn(
+                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                              isActive
+                                ? "bg-[#36BFFA] text-sidebar-accent-foreground"
+                                : "text-sidebar-foreground hover:bg-sidebar-ring"
+                            )
+                          }
+                        >
+                          <span className="w-5" />
+                          {sub.name}
+                        </NavLink>
+                      ))}
+                    </div>
                   )}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
+                </div>
               );
             })}
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-64 p-6">
-          {children}
-        </main>
+        <main className="flex-1 lg:ml-64 p-6">{children}</main>
       </div>
 
       {/* Mobile Overlay */}

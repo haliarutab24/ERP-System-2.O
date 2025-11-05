@@ -3,17 +3,20 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
+
 import Login from "./pages/Login";
 import CompanySelection from "./pages/CompanySelection";
 import Dashboard from "./pages/Dashboard";
-import Inventory from "./pages/Inventory";
 import Sales from "./pages/Sales";
 import Consignment from "./pages/Consignment";
 import Barcode from "./pages/Barcode";
 import Communication from "./pages/Communication";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
+
+// Direct Inventory Pages (No Sidebar or Layout)
+import ProductInfo from "./pages/Inventory/ProductInfo";
+import StockPurchaseDetails from "./pages/Inventory/StockPurchaseDetails";
 
 const queryClient = new QueryClient();
 
@@ -24,16 +27,24 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/company-selection" element={<CompanySelection />} />
+
+          {/* Protected Routes (All use DashboardLayout inside their page) */}
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/inventory" element={<Inventory />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/consignment" element={<Consignment />} />
           <Route path="/barcode" element={<Barcode />} />
           <Route path="/communication" element={<Communication />} />
           <Route path="/reports" element={<Reports />} />
+
+          {/* Inventory Pages – Direct, No Sidebar */}
+          <Route path="/inventory/productinfo" element={<ProductInfo />} />
+          <Route path="/inventory/stock-purchase" element={<StockPurchaseDetails />} />
+
+          {/* Fallback */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
