@@ -18,6 +18,8 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
+  Box,
+  ShoppingBag
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,8 +39,8 @@ const navigation = [
     href: "/inventory",
     icon: Package,
     subNav: [
-      { name: "Product Info", href: "/inventory/productinfo" },
-      { name: "Stock & Purchase", href: "/inventory/stock-purchase" },
+      { name: "Product", href: "/inventory/productinfo", icon: Box },
+      { name: "Stock & Purchase", href: "/inventory/stock-purchase", icon: ShoppingBag },
     ],
   },
   { name: "Sales", href: "/sales", icon: ShoppingCart },
@@ -206,17 +208,29 @@ const DashboardLayout = ({ children }) => {
                             cn(
                               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                               isActive
-                                ? "bg-[#36BFFA] text-sidebar-accent-foreground"
+                                ? "bg-[#36BFFA] text-white"
                                 : "text-sidebar-foreground hover:bg-sidebar-ring"
                             )
                           }
                         >
-                          <span className="w-5" />
-                          {sub.name}
+                          {() => (
+                            <>
+                              {/* 🔹 Icon color changes dynamically */}
+                              {sub.icon && (
+                                <sub.icon
+                                  className={cn(
+                                    "w-4 h-4 transition-colors text-white",
+                                  )}
+                                />
+                              )}
+                              <span>{sub.name}</span>
+                            </>
+                          )}
                         </NavLink>
                       ))}
                     </div>
                   )}
+
                 </div>
               );
             })}
