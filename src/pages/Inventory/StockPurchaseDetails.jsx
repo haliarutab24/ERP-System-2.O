@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Download, Package, Warehouse, AlertTriangle, TrendingUp, MapPin, Edit, Trash2, Eye, MoreVertical, RefreshCw } from "lucide-react";
+import { Plus, Search, Download, Package, Warehouse, AlertTriangle, TrendingUp, MapPin, Edit, Trash2, Eye, MoreVertical, RefreshCw, Store } from "lucide-react";
 import { toast } from "sonner";
 
 const mockStockData = [
@@ -168,7 +168,7 @@ const StockPurchaseDetails = () => {
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-foreground flex items-center gap-2">
                         <Warehouse className="w-4 h-4" />
-                        Stock Location / Warehouse
+                        Stock Location / Stores in Consignment
                       </Label>
                       <Input 
                         placeholder="e.g., Main Warehouse" 
@@ -282,13 +282,13 @@ const StockPurchaseDetails = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-700">Warehouses</p>
+                  <p className="text-sm font-medium text-purple-700">Stores in Consignment</p>
                   <p className="text-2xl font-bold text-purple-900">
                     {new Set(mockStockData.map(item => item.location)).size}
                   </p>
                 </div>
                 <div className="p-2 bg-purple-500/10 rounded-lg">
-                  <Warehouse className="w-5 h-5 text-purple-600" />
+                  <Store className="w-5 h-5 text-purple-600" />
                 </div>
               </div>
             </CardContent>
