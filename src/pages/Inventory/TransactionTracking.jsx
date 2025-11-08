@@ -85,11 +85,11 @@ const TransactionTracking = () => {
               Auto-updated from sales and purchase transactions
             </p>
           </div>
-          
+
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 gap-y-6">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-md transition-shadow duration-300">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -140,9 +140,9 @@ const TransactionTracking = () => {
         </div>
 
         {/* Search Section */}
-       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm hover:shadow-md transition-shadow duration-300 w-full">
           <CardContent className="p-4">
-            <div className="relative flex items-center">
+            <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 z-10" />
               <Input
                 placeholder="Search by totalPurchasedQty..."
@@ -226,7 +226,7 @@ const TransactionTracking = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                         
+
                         </div>
                       </td>
                     </tr>

@@ -49,8 +49,8 @@ const navigation = [
       { name: "Supplier Information", href: "/inventory/supplier-information", icon: Container },
       { name: "Sales History", href: "/inventory/sales-history", icon: ClipboardList },
       { name: "Transaction Traking", href: "/inventory/transaction-traking", icon: ArrowRightLeft },
-
       { name: "WareHouse", href: "/inventory/warehouse", icon: ShoppingBag },
+      { name: "Manage Companies", href: "/inventory/manage-companies", icon: ShoppingBag },
 
     ],
   },

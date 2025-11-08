@@ -207,7 +207,7 @@ const WareHouse = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 gap-y-6">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-md transition-shadow duration-300">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -304,6 +304,7 @@ const WareHouse = () => {
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-muted/40 to-muted/20 border-b border-border/50">
                   <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/80 uppercase tracking-wider">Sr</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/80 uppercase tracking-wider">Warehouse</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/80 uppercase tracking-wider">Address</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/80 uppercase tracking-wider">Incharge</th>
@@ -313,11 +314,12 @@ const WareHouse = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
-                  {filteredWarehouses.map((warehouse) => (
+                  {filteredWarehouses.map((warehouse, index) => (
                     <tr
                       key={warehouse.id}
                       className="group hover:bg-primary/5 transition-all duration-300 ease-in-out transform hover:scale-[1.002]"
                     >
+                      <td className="px-6 py-4 font-semibold">{index + 1}</td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-foreground group-hover:text-primary transition-colors duration-200 flex items-center gap-2">
                           <Warehouse className="w-4 h-4 text-primary/60" />

@@ -117,8 +117,8 @@ const ProductInfo = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleDownload}
               className="border-2 hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 shadow-sm"
             >
@@ -144,15 +144,15 @@ const ProductInfo = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-foreground">Item Code *</Label>
-                      <Input 
-                        placeholder="e.g., ITM001" 
+                      <Input
+                        placeholder="e.g., ITM001"
                         className="focus:ring-2 focus:ring-primary/20 border-2 transition-all duration-200"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-foreground">Item Name *</Label>
-                      <Input 
-                        placeholder="Product title" 
+                      <Input
+                        placeholder="Product title"
                         className="focus:ring-2 focus:ring-primary/20 border-2 transition-all duration-200"
                       />
                     </div>
@@ -171,15 +171,15 @@ const ProductInfo = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-foreground">Category</Label>
-                      <Input 
-                        placeholder="e.g., Electronics/Peripherals" 
+                      <Input
+                        placeholder="e.g., Electronics/Peripherals"
                         className="focus:ring-2 focus:ring-primary/20 border-2 transition-all duration-200"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-foreground">Unit of Measure</Label>
-                      <Input 
-                        placeholder="PCS, KG, Liter, etc." 
+                      <Input
+                        placeholder="PCS, KG, Liter, etc."
                         className="focus:ring-2 focus:ring-primary/20 border-2 transition-all duration-200"
                       />
                     </div>
@@ -191,8 +191,8 @@ const ProductInfo = () => {
                       <Barcode className="w-4 h-4" />
                       Barcode (Optional)
                     </Label>
-                    <Input 
-                      placeholder="Scan or enter barcode" 
+                    <Input
+                      placeholder="Scan or enter barcode"
                       className="focus:ring-2 focus:ring-primary/20 border-2 transition-all duration-200"
                     />
                   </div>
@@ -245,7 +245,7 @@ const ProductInfo = () => {
                     </div>
                   </div>
 
-                  <Button 
+                  <Button
                     className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200 py-3 text-base font-medium mt-4"
                     onClick={handleAddProduct}
                   >
@@ -291,6 +291,9 @@ const ProductInfo = () => {
                 <thead className="bg-gradient-to-r from-muted/40 to-muted/20 border-b border-border/50">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/80 uppercase tracking-wider">
+                      Sr
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/80 uppercase tracking-wider">
                       Image
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/80 uppercase tracking-wider">
@@ -318,11 +321,12 @@ const ProductInfo = () => {
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {filteredProducts.map((item, index) => (
-                    <tr 
-                      key={item.id} 
+                    <tr
+                      key={item.id}
                       className="group hover:bg-primary/5 transition-all duration-300 ease-in-out transform hover:scale-[1.002]"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
+                      <td className="px-6 py-4 font-semibold">{index + 1}</td>
                       <td className="px-6 py-4">
                         {item.image ? (
                           <img
@@ -352,8 +356,8 @@ const ProductInfo = () => {
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className={`${getCategoryColor(item.category)} border-2 font-medium text-xs px-2 py-1 rounded-full`}
                         >
                           {item.category}
@@ -417,7 +421,7 @@ const ProductInfo = () => {
                   ))}
                 </tbody>
               </table>
-              
+
               {filteredProducts.length === 0 && (
                 <div className="text-center py-12">
                   <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />

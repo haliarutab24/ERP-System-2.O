@@ -85,7 +85,7 @@ const SalesHistory = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 gap-y-6">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-md transition-shadow duration-300">
             <CardContent className="p-4 flex justify-between items-center">
               <div>
@@ -214,7 +214,7 @@ const SalesHistory = () => {
                       className="group hover:bg-primary/5 transition-all duration-300 ease-in-out"
                     >
                       <td className="px-6 py-4 font-semibold">{s.id}</td>
-                        <td className="px-6 py-4 font-semibold">{s.invoiceNo}</td>
+                      <td className="px-6 py-4 font-semibold">{s.invoiceNo}</td>
                       <td className="px-6 py-4">{s.saleDate}</td>
                       <td className="px-6 py-4">{s.customerName}</td>
                       <td className="px-6 py-4">{s.quantitySold}</td>

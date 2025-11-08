@@ -22,6 +22,7 @@ import UserManegement from "./pages/UserManegement/UserManegement";
 import SupplierInformation from "./pages/Inventory/SupplierInformation";
 import SalesHistory from "./pages/Inventory/SalesHistory";
 import TransactionTracking from "./pages/Inventory/TransactionTracking";
+import ManageCompanies from "./pages/Inventory/ManageCompanies";
 
 const queryClient = new QueryClient();
 
@@ -52,8 +53,9 @@ const App = () => (
           <Route path="/inventory/supplier-information" element={<SupplierInformation />} />
           <Route path="/inventory/sales-history" element={<SalesHistory />} />
           <Route path="/inventory/transaction-traking" element={<TransactionTracking />} />
+          <Route path="/inventory/manage-companies" element={<ManageCompanies />} />
           {/* user Mangement */}
-           <Route path="/user-manegement" element={<UserManegement />} />
+          <Route path="/user-manegement" element={<UserManegement />} />
 
           <Route path="/inventory/warehouse" element={<WareHouse />} />
           <Route path="/signup" element={<Signup />} />
