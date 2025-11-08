@@ -22,7 +22,11 @@ import UserManegement from "./pages/UserManegement/UserManegement";
 import SupplierInformation from "./pages/Inventory/SupplierInformation";
 import SalesHistory from "./pages/Inventory/SalesHistory";
 import TransactionTracking from "./pages/Inventory/TransactionTracking";
-import ManageCompanies from "./pages/Inventory/ManageCompanies";
+// Company Management Pages
+import ManageCompanies from "./pages/CompanyManagement/ManageCompanies";
+import CompanySwitcher from "./pages/CompanyManagement/CompanySwitcher";
+import CreateCompanyForm from "./pages/CompanyManagement/CreateCompanyForm";
+import RoleAccessSettings from "./pages/CompanyManagement/RoleAccessSettings";
 
 const queryClient = new QueryClient();
 
@@ -49,11 +53,15 @@ const App = () => (
           {/* Inventory Pages – Direct, No Sidebar */}
           <Route path="/inventory/productinfo" element={<ProductInfo />} />
           <Route path="/inventory/stock-purchase" element={<StockPurchaseDetails />} />
-
           <Route path="/inventory/supplier-information" element={<SupplierInformation />} />
           <Route path="/inventory/sales-history" element={<SalesHistory />} />
           <Route path="/inventory/transaction-traking" element={<TransactionTracking />} />
-          <Route path="/inventory/manage-companies" element={<ManageCompanies />} />
+
+          {/* Company Management Pages */}
+          <Route path="/company-management/manage-companies" element={<ManageCompanies />} />
+          <Route path="/company-management/company-switcher" element={<CompanySwitcher />} />
+          <Route path="/company-management/create-company-form" element={<CreateCompanyForm />} />
+          <Route path="/company-management/role-access-settings" element={<RoleAccessSettings />} />
           {/* user Mangement */}
           <Route path="/user-manegement" element={<UserManegement />} />
 

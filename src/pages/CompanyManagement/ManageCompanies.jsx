@@ -28,50 +28,60 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-const mockCompanies = [
-    {
-        id: 1,
-        logo: "https://ui-avatars.com/api/?name=Tech+Corp",
-        name: "Tech Corp Solutions",
-        email: "info@techcorp.com",
-        contact: "+92 321 4567890",
-        role: "Admin",
-        status: "Active",
-        createdAt: "2024-05-16",
-    },
-    {
-        id: 2,
-        logo: "https://ui-avatars.com/api/?name=Bright+Retail",
-        name: "Bright Retail Pvt Ltd",
-        email: "sales@brightretail.com",
-        contact: "+92 300 1234567",
-        role: "Salesman",
-        status: "Inactive",
-        createdAt: "2024-08-10",
-    },
-    {
-        id: 3,
-        logo: "https://ui-avatars.com/api/?name=Alpha+Enterprises",
-        name: "Alpha Enterprises",
-        email: "support@alphaent.com",
-        contact: "+92 345 9087654",
-        role: "Manager",
-        status: "Active",
-        createdAt: "2025-01-04",
-    },
-    // Add more mock companies here to test pagination
-];
-
 const ManageCompanies = () => {
+    // ----- State Hooks -----
+    const [companies, setCompanies] = useState([
+        {
+            id: 1,
+            logo: "https://ui-avatars.com/api/?name=Tech+Corp",
+            name: "Tech Corp Solutions",
+            email: "info@techcorp.com",
+            contact: "+92 321 4567890",
+            role: "Admin",
+            status: "Active",
+            createdAt: "2024-05-16",
+        },
+        {
+            id: 2,
+            logo: "https://ui-avatars.com/api/?name=Bright+Retail",
+            name: "Bright Retail Pvt Ltd",
+            email: "sales@brightretail.com",
+            contact: "+92 300 1234567",
+            role: "Salesman",
+            status: "Inactive",
+            createdAt: "2024-08-10",
+        },
+        {
+            id: 3,
+            logo: "https://ui-avatars.com/api/?name=Alpha+Enterprises",
+            name: "Alpha Enterprises",
+            email: "support@alphaent.com",
+            contact: "+92 345 9087654",
+            role: "Manager",
+            status: "Active",
+            createdAt: "2025-01-04",
+        },
+    ]);
+
+    const [newCompany, setNewCompany] = useState({
+        name: "",
+        email: "",
+        contact: "",
+        role: "",
+        status: "",
+        logo: "",
+    });
+
     const [searchTerm, setSearchTerm] = useState("");
     const [filterRole, setFilterRole] = useState("All");
     const [filterStatus, setFilterStatus] = useState("All");
     const [isAddOpen, setIsAddOpen] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 2; // Adjust number of companies per page
+    const itemsPerPage = 2;
 
-    const filteredCompanies = mockCompanies.filter((c) => {
+    // ----- Filtered and Paginated Companies -----
+    const filteredCompanies = companies.filter((c) => {
         const matchesSearch =
             c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,16 +93,39 @@ const ManageCompanies = () => {
         return matchesSearch && matchesRole && matchesStatus;
     });
 
-    // Pagination logic
     const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
     const paginatedCompanies = filteredCompanies.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
+    // ----- Handlers -----
     const handleAddCompany = () => {
+        if (!newCompany.name) return toast.error("Company name is required!");
+
+        const companyToAdd = {
+            id: companies.length + 1,
+            name: newCompany.name,
+            email: newCompany.email,
+            contact: newCompany.contact,
+            role: newCompany.role,
+            status: newCompany.status,
+            logo: newCompany.logo || `https://ui-avatars.com/api/?name=${newCompany.name.replace(/\s/g, "+")}`,
+            createdAt: new Date().toISOString().split("T")[0],
+        };
+
+        setCompanies(prev => [...prev, companyToAdd]);
         toast.success("Company added successfully!");
         setIsAddOpen(false);
+
+        setNewCompany({
+            name: "",
+            email: "",
+            contact: "",
+            role: "",
+            status: "",
+            logo: "",
+        });
     };
 
     const handleEdit = (id) => toast.info(`Editing company #${id}`);
@@ -113,6 +146,7 @@ const ManageCompanies = () => {
                         </p>
                     </div>
 
+                    {/* Add Company Dialog */}
                     <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                         <DialogTrigger asChild>
                             <Button className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200">
@@ -130,10 +164,14 @@ const ManageCompanies = () => {
                                 {/* Company Name */}
                                 <div className="space-y-2">
                                     <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-                                        <Building2 className="w-4 h-4" />
-                                        Company Name
+                                        <Building2 className="w-4 h-4" /> Company Name
                                     </Label>
-                                    <Input placeholder="Enter company name" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                    <Input
+                                        placeholder="Enter company name"
+                                        value={newCompany.name}
+                                        onChange={(e) => setNewCompany(prev => ({ ...prev, name: e.target.value }))}
+                                        className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                    />
                                 </div>
 
                                 {/* Contact Info */}
@@ -142,14 +180,46 @@ const ManageCompanies = () => {
                                         <Label className="text-sm font-medium flex items-center gap-2">
                                             <Mail className="w-4 h-4" /> Email
                                         </Label>
-                                        <Input type="email" placeholder="company@email.com" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                        <Input
+                                            type="email"
+                                            placeholder="company@email.com"
+                                            value={newCompany.email}
+                                            onChange={(e) => setNewCompany(prev => ({ ...prev, email: e.target.value }))}
+                                            className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-sm font-medium flex items-center gap-2">
                                             <Phone className="w-4 h-4" /> Contact
                                         </Label>
-                                        <Input placeholder="+92 3XX XXXXXXX" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                        <Input
+                                            placeholder="+92 3XX XXXXXXX"
+                                            value={newCompany.contact}
+                                            onChange={(e) => setNewCompany(prev => ({ ...prev, contact: e.target.value }))}
+                                            className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                        />
                                     </div>
+                                </div>
+
+                                {/* Logo Upload */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium flex items-center gap-2">
+                                        Logo
+                                    </Label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                const reader = new FileReader();
+                                                reader.onload = () => {
+                                                    setNewCompany(prev => ({ ...prev, logo: reader.result }));
+                                                };
+                                                reader.readAsDataURL(e.target.files[0]);
+                                            }
+                                        }}
+                                        className="border-2 p-2 rounded-lg focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                    />
                                 </div>
 
                                 {/* Role and Status */}
@@ -158,7 +228,7 @@ const ManageCompanies = () => {
                                         <Label className="text-sm font-medium flex items-center gap-2">
                                             <Shield className="w-4 h-4" /> Role
                                         </Label>
-                                        <Select>
+                                        <Select value={newCompany.role} onValueChange={(val) => setNewCompany(prev => ({ ...prev, role: val }))}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select role" />
                                             </SelectTrigger>
@@ -173,7 +243,7 @@ const ManageCompanies = () => {
                                         <Label className="text-sm font-medium flex items-center gap-2">
                                             <CheckCircle2 className="w-4 h-4" /> Status
                                         </Label>
-                                        <Select>
+                                        <Select value={newCompany.status} onValueChange={(val) => setNewCompany(prev => ({ ...prev, status: val }))}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select status" />
                                             </SelectTrigger>

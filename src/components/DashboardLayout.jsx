@@ -21,7 +21,10 @@ import {
   Box,
   ShoppingBag,
   Container,
-
+  Edit,
+  Warehouse,
+  Briefcase,
+  Key,
 } from "lucide-react";
 import { ClipboardList, ArrowRightLeft } from "lucide-react";
 
@@ -49,9 +52,18 @@ const navigation = [
       { name: "Supplier Information", href: "/inventory/supplier-information", icon: Container },
       { name: "Sales History", href: "/inventory/sales-history", icon: ClipboardList },
       { name: "Transaction Traking", href: "/inventory/transaction-traking", icon: ArrowRightLeft },
-      { name: "WareHouse", href: "/inventory/warehouse", icon: ShoppingBag },
-      { name: "Manage Companies", href: "/inventory/manage-companies", icon: ShoppingBag },
-
+      { name: "WareHouse", href: "/inventory/warehouse", icon: Warehouse },
+    ],
+  },
+  {
+    name: "Company Management",
+    href: "/company-management",
+    icon: Briefcase, // you can choose a suitable icon for the main parent
+    subNav: [
+      { name: "Manage Companies", href: "/company-management/manage-companies", icon: Edit },
+      { name: "Company Switcher", href: "/company-management/company-switcher", icon: Building2 },
+      { name: "Company Form", href: "/company-management/create-company-form", icon: Briefcase },
+      { name: "Role Access", href: "/company-management/role-access-settings", icon: Key },
     ],
   },
   { name: "User Management", href: "/user-manegement", icon: User },
@@ -70,12 +82,16 @@ const DashboardLayout = ({ children }) => {
 
   const selectedCompany = JSON.parse(localStorage.getItem("selectedCompany") || "{}");
   const isInventoryActive = location.pathname.startsWith("/inventory");
+  const isCompanyManagementActive = location.pathname.startsWith("/company-management");
 
   useEffect(() => {
     if (isInventoryActive) {
       setOpenSubNav((prev) => ({ ...prev, Inventory: true }));
     }
-  }, [isInventoryActive]);
+    if (isCompanyManagementActive) {
+      setOpenSubNav((prev) => ({ ...prev, "Company Management": true }));
+    }
+  }, [isInventoryActive, isCompanyManagementActive]);
 
   const handleLogout = () => {
     toast.success("Logged out successfully");
@@ -159,56 +175,39 @@ const DashboardLayout = ({ children }) => {
         >
           <nav className="flex flex-col gap-2 p-4">
             {navigation.map((item) => {
-              const isSubOpen =
-                openSubNav[item.name] || (isInventoryActive && item.name === "Inventory");
+              const isSubOpen = openSubNav[item.name];
 
               return (
                 <div key={item.name}>
-                  <NavLink
-                    to={item.href}
-                    onClick={(e) => {
+                  {/* Parent item */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                      location.pathname.startsWith(item.href)
+                        ? "bg-[#36BFFA] text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-ring"
+                    )}
+                    onClick={() => {
                       if (item.subNav) {
-                        e.preventDefault();
                         setOpenSubNav((prev) => ({
                           ...prev,
                           [item.name]: !prev[item.name],
                         }));
+                      } else {
+                        navigate(item.href);
+                        setSidebarOpen(false);
                       }
-                      setSidebarOpen(false);
                     }}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-[#36BFFA] text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-ring"
-                      )
-                    }
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="w-5 h-5" />
                       {item.name}
                     </div>
-                    {item.subNav && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setOpenSubNav((prev) => ({
-                            ...prev,
-                            [item.name]: !prev[item.name],
-                          }));
-                        }}
-                      >
-                        {isSubOpen ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
-                        )}
-                      </button>
-                    )}
-                  </NavLink>
+                    {item.subNav &&
+                      (isSubOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                  </div>
 
+                  {/* Child links */}
                   {item.subNav && isSubOpen && (
                     <div className="ml-8 mt-1 space-y-1">
                       {item.subNav.map((sub) => (
@@ -219,33 +218,20 @@ const DashboardLayout = ({ children }) => {
                           className={({ isActive }) =>
                             cn(
                               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                              isActive
-                                ? "bg-[#36BFFA] text-white"
-                                : "text-sidebar-foreground hover:bg-sidebar-ring"
+                              isActive ? "bg-[#36BFFA] text-white" : "text-sidebar-foreground hover:bg-sidebar-ring"
                             )
                           }
                         >
-                          {() => (
-                            <>
-                              {/* 🔹 Icon color changes dynamically */}
-                              {sub.icon && (
-                                <sub.icon
-                                  className={cn(
-                                    "w-4 h-4 transition-colors text-white",
-                                  )}
-                                />
-                              )}
-                              <span>{sub.name}</span>
-                            </>
-                          )}
+                          {sub.icon && <sub.icon className="w-4 h-4" />}
+                          <span>{sub.name}</span>
                         </NavLink>
                       ))}
                     </div>
                   )}
-
                 </div>
               );
             })}
+
           </nav>
         </aside>
 
