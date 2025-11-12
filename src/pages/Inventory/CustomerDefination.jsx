@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Download, User, Mail, MapPin, Globe, Users, AlertCircle, List, MoreVertical, Edit, Trash2, Eye, UserPlus, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import CustomerViewModal from "./Models/CustomerDefinationModal"
+import { Loader } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -21,45 +23,22 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import api from "../../Api/AxiosInstance"
 
-const mockCustomerData = [
-    {
-        id: 1,
-        customerCode: "CUST001",
-        customerName: "Ali Traders",
-        contactPerson: "Ali Khan",
-        email: "ali@traders.com",
-        billingAddress: "Street 12, Karachi, Pakistan",
-        country: "Pakistan",
-        customerType: "Company",
-        category: "Wholesale",
-        vatNumber: "VAT12345",
-        vatRegime: "Local VAT",
-        vatRate: 17,
-        paymentTerms: "Net 30 days",
-    },
-    {
-        id: 2,
-        customerCode: "CUST002",
-        customerName: "Sara Enterprises",
-        contactPerson: "Sara Ali",
-        email: "sara@enterprise.com",
-        billingAddress: "Sector F-8, Lahore",
-        country: "Pakistan",
-        customerType: "Individual",
-        category: "Retail",
-        vatNumber: "",
-        vatRegime: "0%",
-        vatRate: 0,
-        paymentTerms: "Due on receipt",
-    },
-];
 
 const CustomerDefinition = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [customerList, setCustomerList] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [summary, setSummary] = useState([])
+    const [editingCustomer, setEditingCustomer] = useState(null);
+    const [categoryList, setCategoryList] = useState([]);
+    const [viewCustomer, setViewCustomer] = useState(null);
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
 
-    const filteredCustomers = mockCustomerData.filter(customer =>
+    const filteredCustomers = customerList.filter(customer =>
         customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,15 +46,21 @@ const CustomerDefinition = () => {
         customer.customerType.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleSaveCustomer = () => {
-        toast.success("Customer added successfully!");
-        setIsAddOpen(false);
-    };
-
-    const handleEdit = (id) => toast.success(`Editing customer #${id}`);
-    const handleDelete = (id) => toast.error(`Deleting customer #${id}`);
-    const handleView = (id) => toast.info(`Viewing customer details #${id}`);
     const handleDownload = () => toast.success("Customer report downloaded!");
+
+    // Loader
+    const TableLoader = ({ message = "Loading...", colSpan = 6 }) => {
+        return (
+            <tr>
+                <td colSpan={colSpan} className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                        <Loader className="w-10 h-10 text-primary animate-spin mb-2" />
+                        <p className="text-sm text-muted-foreground font-medium">{message}</p>
+                    </div>
+                </td>
+            </tr>
+        );
+    };
 
     // For Customize Popup
     const [visibleFields, setVisibleFields] = useState([
@@ -90,6 +75,263 @@ const CustomerDefinition = () => {
     const [tempVisibleFields, setTempVisibleFields] = useState([]);
     const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
     const [fieldLimitAlert, setFieldLimitAlert] = useState(false);
+
+
+    // 🟢 Fetch Category Data
+    const fetchCategoryList = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await api.get("/categories");
+            console.log("Res Category", response.data);
+
+            if (response.data.success && Array.isArray(response.data.data)) {
+                const formattedData = response.data.data.map((item) => ({
+                    id: item._id,
+                    name: item.categoryName || "-",
+                    description: item.description || "-",
+                    status: item.status || "-",
+                    logo: item.logo?.url || "",
+                    createdAt: new Date(item.createdAt).toLocaleDateString(),
+                }));
+
+                setCategoryList(formattedData);
+
+                // ✅ Set summary from API response
+                setSummary({
+                    totalCategories: response.data.summary?.totalCategories || formattedData.length,
+                    activeCategories: response.data.summary?.activeCategories || formattedData.filter(c => c.status === "Active").length,
+                });
+            } else {
+                console.warn("⚠️ Unexpected API response structure:", response.data);
+                setCategoryList([]);
+                setSummary({ totalCategories: 0, activeCategories: 0 });
+            }
+        } catch (error) {
+            console.error("❌ Failed to fetch Categories:", error);
+            setSummary({ totalCategories: 0, activeCategories: 0 });
+        } finally {
+            setTimeout(() => setLoading(false), 1500);
+        }
+    }, []);
+
+
+    useEffect(() => {
+        fetchCategoryList();
+    }, [fetchCategoryList]);
+
+    // 🟢 Fetch Customer Data
+    const fetchCustomerList = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await api.get("/customers");
+            console.log("Res", response.data);
+
+            if (response.data.success && Array.isArray(response.data.data)) {
+                const formattedData = response.data.data.map((item) => ({
+                    id: item._id,
+                    customerCode: item.customerCode || "-",
+                    customerName: item.customerName || "-",
+                    contactPerson: item.contactPerson || "-",
+                    email: item.email || "-",
+                    billingAddress: item.billingAddress || "-",
+                    country: item.country || "-",
+                    vatNumber: item.vatNumber || "-",
+                    customerType: item.customerType || "-",
+                    vatRegime: item.vatRegime || "-",
+                    defaultVatRate: item.defaultVatRate || "-",
+                    paymentTerms: item.paymentTerms || "-",
+                    categoryId: item.categoryId || item.category || null, // 👈 capture the category id
+                    createdAt: new Date(item.createdAt).toLocaleDateString(),
+                }));
+
+                setCustomerList(formattedData);
+
+                // ✅ Set summary from API response
+                setSummary({
+                    totalCustomers: response.data.summary?.totalCustomers || formattedData.length,
+                    newCustomers: response.data.summary?.newCustomers || 0,
+                    activeCustomers: response.data.summary?.activeCustomers || formattedData.filter(c => c.status === "Active").length,
+                    customerLocations: response.data.summary?.customerLocations || 0,
+                });
+            } else {
+                console.warn("⚠️ Unexpected API response structure:", response.data);
+                setCustomerList([]);
+                setSummary({
+                    totalCustomers: 0,
+                    newCustomers: 0,
+                    activeCustomers: 0,
+                    customerLocations: 0,
+                });
+            }
+        } catch (error) {
+            console.error("❌ Failed to fetch Customers:", error);
+            setSummary({
+                totalCustomers: 0,
+                newCustomers: 0,
+                activeCustomers: 0,
+                customerLocations: 0,
+            });
+        } finally {
+            setTimeout(() => setLoading(false), 1500);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchCustomerList();
+    }, [fetchCustomerList]); 0
+
+
+    // Customer Code Increment
+    useEffect(() => {
+        if (customerList.length > 0) {
+            // Extract numbers from codes like "CUST001"
+            const codes = customerList
+                .map(c => parseInt(c.customerCode?.replace(/\D/g, ""), 10))
+                .filter(n => !isNaN(n));
+
+            const maxCode = Math.max(...codes, 0); // find the largest numeric part
+            const nextCode = `CUST${String(maxCode + 1).padStart(3, "0")}`;
+
+            setNewCustomer(prev => ({
+                ...prev,
+                customerCode: nextCode,
+            }));
+        } else {
+            // No customers yet → start with first code
+            setNewCustomer(prev => ({
+                ...prev,
+                customerCode: "CUST001",
+            }));
+        }
+    }, [customerList]);
+
+
+    // Customer From States
+    const [newCustomer, setNewCustomer] = useState({
+        customerCode: "",
+        customerName: "",
+        contactPerson: "",
+        email: "",
+        billingAddress: "",
+        country: "",
+        vatNumber: "",
+        customerType: "",
+        vatRegime: "",
+        defaultVatRate: "",
+        paymentTerms: "",
+        categoryId: "", // ✅ Add this
+    });
+
+
+
+    // Clear From
+    const clearForm = () => {
+        setNewCustomer({
+            customerCode: "",
+            customerName: "",
+            contactPerson: "",
+            email: "",
+            billingAddress: "",
+            country: "",
+            vatNumber: "",
+            customerType: "",
+            vatRegime: "",
+            defaultVatRate: "",
+            paymentTerms: "",
+            categoryId: "", // reset
+        });
+        setEditingCustomer(null);
+    };
+
+    // Handle Add Button
+    const handleSaveCustomer = async () => {
+        try {
+            setSaving(true); // start loader
+            const payload = {
+                customerCode: newCustomer.customerCode,
+                customerName: newCustomer.customerName,
+                contactPerson: newCustomer.contactPerson,
+                email: newCustomer.email,
+                billingAddress: newCustomer.billingAddress,
+                country: newCustomer.country,
+                vatNumber: newCustomer.vatNumber,
+                customerType: newCustomer.customerType,
+                vatRegime: newCustomer.vatRegime,
+                defaultVatRate: newCustomer.defaultVatRate,
+                paymentTerms: newCustomer.paymentTerms,
+                categoryId: newCustomer.categoryId || "", // include category
+            };
+
+            console.log("Saving customer payload (JSON):", JSON.stringify(payload, null, 2));
+
+            if (editingCustomer) {
+                // ✏️ Update existing customer
+                await api.put(`/customers/${editingCustomer.id}`, payload);
+                toast.success("Customer updated successfully!");
+            } else {
+                // ➕ Add new customer
+                await api.post("/customers", payload);
+                toast.success("Customer added successfully!");
+            }
+
+            // Close modal, reset form and refresh list
+            setIsAddOpen(false);
+            clearForm();
+            setEditingCustomer(null);
+            fetchCustomerList();
+
+        } catch (error) {
+            console.error("❌ Failed to save customer:", error);
+            toast.error("Failed to save customer");
+        } finally {
+            setSaving(false); // stop loader
+        }
+    };
+
+    // Handle Delete
+    const handleDelete = async (id) => {
+        try {
+            const response = await api.delete(`/customers/${id}`);
+            console.log("Delete response:", response.data);
+            toast.success("Customer deleted successfully!");
+            // Remove deleted customer from list
+            setCustomerList(prev => prev.filter(c => c.id !== id));
+        } catch (error) {
+            console.error("❌ Failed to delete customer:", error.response || error);
+            toast.error("Failed to delete customer");
+        }
+    };
+
+    // Handle Edit
+    const handleEdit = (id) => {
+        const customer = customerList.find(c => c.id === id);
+        if (!customer) return toast.error("Customer not found!");
+
+        setNewCustomer({
+            customerCode: customer.customerCode,
+            customerName: customer.customerName,
+            contactPerson: customer.contactPerson,
+            email: customer.email,
+            billingAddress: customer.billingAddress,
+            country: customer.country,
+            vatNumber: customer.vatNumber,
+            customerType: customer.customerType,
+            vatRegime: customer.vatRegime,
+            defaultVatRate: customer.defaultVatRate,
+            paymentTerms: customer.paymentTerms,
+            categoryId: customer.categoryId || "",
+        });
+
+        setEditingCustomer(customer); // mark as editing
+        setIsAddOpen(true);           // open the modal
+    };
+
+    // Handle View
+    const handleView = (customerId) => {
+        const customer = customerList.find(c => c.id === customerId);
+        setViewCustomer(customer);
+        setIsViewOpen(true);
+    };
 
     const handleCustomizeOpen = (open) => {
         setIsCustomizeOpen(open);
@@ -106,6 +348,11 @@ const CustomerDefinition = () => {
         setVisibleFields(tempVisibleFields);
         setIsCustomizeOpen(false);
         toast.success("Display settings updated!");
+    };
+
+    const getCategoryName = (categoryId) => {
+        const category = categoryList.find(cat => cat.id === categoryId);
+        return category ? category.name : "-";
     };
 
     return (
@@ -148,53 +395,121 @@ const CustomerDefinition = () => {
                                 <div className="space-y-6 pt-4">
                                     {/* Customer Form Fields */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Customer Code */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Customer Code
                                             </Label>
-                                            <Input placeholder="CUST001" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                placeholder="CUST001"
+                                                value={newCustomer.customerCode}
+                                                readOnly
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200 bg-muted cursor-not-allowed"
+                                            />
                                         </div>
+
+                                        {/* Customer Name */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Customer Name
                                             </Label>
-                                            <Input placeholder="Ali Traders" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                placeholder="Ali Traders"
+                                                value={newCustomer.customerName}
+                                                onChange={(e) =>
+                                                    setNewCustomer({ ...newCustomer, customerName: e.target.value })
+                                                }
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                            />
                                         </div>
+
+                                        {/* Contact Person */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Contact Person
                                             </Label>
-                                            <Input placeholder="Ali Khan" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                placeholder="Ali Khan"
+                                                value={newCustomer.contactPerson}
+                                                onChange={(e) =>
+                                                    setNewCustomer({ ...newCustomer, contactPerson: e.target.value })
+                                                }
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                            />
                                         </div>
+
+                                        {/* Email */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Email Address
                                             </Label>
-                                            <Input type="email" placeholder="contact@customer.com" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                type="email"
+                                                placeholder="contact@customer.com"
+                                                value={newCustomer.email}
+                                                onChange={(e) =>
+                                                    setNewCustomer({ ...newCustomer, email: e.target.value })
+                                                }
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                            />
                                         </div>
+
+                                        {/* Billing Address */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Billing Address
                                             </Label>
-                                            <Input placeholder="Street 12, Karachi" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                placeholder="Street 12, Karachi"
+                                                value={newCustomer.billingAddress}
+                                                onChange={(e) =>
+                                                    setNewCustomer({ ...newCustomer, billingAddress: e.target.value })
+                                                }
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                            />
                                         </div>
+
+                                        {/* Country */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Country
                                             </Label>
-                                            <Input placeholder="Pakistan" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                placeholder="Pakistan"
+                                                value={newCustomer.country}
+                                                onChange={(e) =>
+                                                    setNewCustomer({ ...newCustomer, country: e.target.value })
+                                                }
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                            />
                                         </div>
+
+                                        {/* VAT Number */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 VAT Number
                                             </Label>
-                                            <Input placeholder="VAT12345" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                placeholder="VAT12345"
+                                                value={newCustomer.vatNumber}
+                                                onChange={(e) =>
+                                                    setNewCustomer({ ...newCustomer, vatNumber: e.target.value })
+                                                }
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                            />
                                         </div>
+
+                                        {/* Customer Type */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Customer Type
                                             </Label>
-                                            <Select>
+                                            <Select
+                                                value={newCustomer.customerType}
+                                                onValueChange={(value) =>
+                                                    setNewCustomer({ ...newCustomer, customerType: value })
+                                                }
+                                            >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select type" />
                                                 </SelectTrigger>
@@ -204,27 +519,49 @@ const CustomerDefinition = () => {
                                                 </SelectContent>
                                             </Select>
                                         </div>
+
+                                        {/* Category */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Category
                                             </Label>
-                                            <Select>
+                                            <Select
+                                                value={newCustomer.categoryId}
+                                                onValueChange={(value) =>
+                                                    setNewCustomer({ ...newCustomer, categoryId: value })
+                                                }
+                                            >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select category" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="Retail">Retail</SelectItem>
-                                                    <SelectItem value="Wholesale">Wholesale</SelectItem>
-                                                    <SelectItem value="Distributor">Distributor</SelectItem>
-                                                    <SelectItem value="EU Client">EU Client</SelectItem>
+                                                    {categoryList.length > 0 ? (
+                                                        categoryList.map((cat) => (
+                                                            <SelectItem key={cat.id} value={cat.id}>
+                                                                {cat.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    ) : (
+                                                        <SelectItem disabled value="">
+                                                            No categories available
+                                                        </SelectItem>
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         </div>
+
+
+                                        {/* VAT Regime */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 VAT Regime
                                             </Label>
-                                            <Select>
+                                            <Select
+                                                value={newCustomer.vatRegime}
+                                                onValueChange={(value) =>
+                                                    setNewCustomer({ ...newCustomer, vatRegime: value })
+                                                }
+                                            >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select regime" />
                                                 </SelectTrigger>
@@ -236,17 +573,33 @@ const CustomerDefinition = () => {
                                                 </SelectContent>
                                             </Select>
                                         </div>
+
+                                        {/* Default VAT Rate */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Default VAT Rate (%)
                                             </Label>
-                                            <Input placeholder="17" className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200" />
+                                            <Input
+                                                placeholder="17"
+                                                value={newCustomer.defaultVatRate}
+                                                onChange={(e) =>
+                                                    setNewCustomer({ ...newCustomer, defaultVatRate: e.target.value })
+                                                }
+                                                className="border-2 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                            />
                                         </div>
+
+                                        {/* Payment Terms */}
                                         <div className="space-y-2">
                                             <Label className="text-sm font-medium flex items-center gap-2">
                                                 Payment Terms
                                             </Label>
-                                            <Select>
+                                            <Select
+                                                value={newCustomer.paymentTerms}
+                                                onValueChange={(value) =>
+                                                    setNewCustomer({ ...newCustomer, paymentTerms: value })
+                                                }
+                                            >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select terms" />
                                                 </SelectTrigger>
@@ -259,10 +612,12 @@ const CustomerDefinition = () => {
                                     </div>
 
                                     <Button
-                                        className="w-full mt-2 py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-semibold rounded-xl"
+                                        className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200 py-3 text-base font-medium flex items-center justify-center gap-2"
                                         onClick={handleSaveCustomer}
+                                        disabled={saving} // prevent double click
                                     >
-                                        Save Customer
+                                        {saving && <Loader className="w-4 h-4 animate-spin" />}
+                                        {saving ? (editingCustomer ? "Updating..." : "Saving...") : (editingCustomer ? "Update Customer" : "Save Customer")}
                                     </Button>
                                 </div>
                             </DialogContent>
@@ -278,7 +633,7 @@ const CustomerDefinition = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-blue-700">Total Customers</p>
-                                    <p className="text-2xl font-bold text-blue-900">245</p>
+                                    <p className="text-2xl font-bold text-blue-900">{summary.totalCustomers}</p>
                                 </div>
                                 <div className="p-2 bg-blue-500/10 rounded-lg">
                                     <Users className="w-5 h-5 text-blue-600" />
@@ -293,7 +648,7 @@ const CustomerDefinition = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-green-700">New Customers (This Month)</p>
-                                    <p className="text-2xl font-bold text-green-900">32</p>
+                                    <p className="text-2xl font-bold text-green-900">{summary.newCustomers}</p>
                                 </div>
                                 <div className="p-2 bg-green-500/10 rounded-lg">
                                     <UserPlus className="w-5 h-5 text-green-600" />
@@ -308,7 +663,7 @@ const CustomerDefinition = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-amber-700">Active Customers</p>
-                                    <p className="text-2xl font-bold text-amber-900">198</p>
+                                    <p className="text-2xl font-bold text-amber-900">{summary.activeCustomers}</p>
                                 </div>
                                 <div className="p-2 bg-amber-500/10 rounded-lg">
                                     <UserCheck className="w-5 h-5 text-amber-600" />
@@ -323,7 +678,7 @@ const CustomerDefinition = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-purple-700">Customer Locations</p>
-                                    <p className="text-2xl font-bold text-purple-900">8</p>
+                                    <p className="text-2xl font-bold text-purple-900">{summary.customerLocations}</p>
                                 </div>
                                 <div className="p-2 bg-purple-500/10 rounded-lg">
                                     <MapPin className="w-5 h-5 text-purple-600" />
@@ -390,72 +745,79 @@ const CustomerDefinition = () => {
                                     <th className="px-6 py-4 text-center text-sm font-semibold uppercase tracking-wider w-[120px]">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border/30">
-                                {filteredCustomers.map((c, index) => (
-                                    <tr key={c.id} className="group hover:bg-primary/5 transition-all duration-300 ease-in-out">
-                                        {visibleFields.includes("sr") && <td className="px-6 py-4 font-semibold">{index + 1}</td>}
-                                        {visibleFields.includes("customerName") && <td className="px-6 py-4">{c.customerName}</td>}
-                                        {visibleFields.includes("contactPerson") && <td className="px-6 py-4">{c.contactPerson}</td>}
-                                        {visibleFields.includes("email") && <td className="px-6 py-4">{c.email}</td>}
-                                        {visibleFields.includes("country") && <td className="px-6 py-4">{c.country}</td>}
-                                        {visibleFields.includes("customerType") && <td className="px-6 py-4">{c.customerType}</td>}
-                                        {visibleFields.includes("category") && <td className="px-6 py-4">{c.category}</td>}
-                                        {visibleFields.includes("vatNumber") && <td className="px-6 py-4">{c.vatNumber}</td>}
-                                        {visibleFields.includes("vatRegime") && <td className="px-6 py-4">{c.vatRegime}</td>}
-                                        {visibleFields.includes("vatRate") && <td className="px-6 py-4">{c.vatRate}%</td>}
-                                        {visibleFields.includes("paymentTerms") && <td className="px-6 py-4">{c.paymentTerms}</td>}
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                {/* View */}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleView(c.id)}
-                                                    className="h-8 w-8 p-0 hover:bg-blue-50 text-gray-600 hover:text-blue-700 transition-all duration-200 rounded-lg"
-                                                    title="View Customer"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </Button>
-
-                                                {/* Edit */}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleEdit(c.id)}
-                                                    className="h-8 w-8 p-0 hover:bg-green-50 text-gray-600 hover:text-green-700 transition-all duration-200 rounded-lg"
-                                                    title="Edit Customer"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </Button>
-
-                                                {/* Delete */}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleDelete(c.id)}
-                                                    className="h-8 w-8 p-0 hover:bg-red-50 text-gray-600 hover:text-red-700 transition-all duration-200 rounded-lg"
-                                                    title="Delete Customer"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
+                            {loading ? (
+                                <tbody>
+                                    <tr>
+                                        <td colSpan={visibleFields.length + 1} className="py-20 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <Loader className="w-10 h-10 text-primary animate-spin mb-2" />
+                                                <p className="text-sm text-muted-foreground font-medium">Fetching customers...</p>
                                             </div>
                                         </td>
-
                                     </tr>
-                                ))}
-                            </tbody>
+                                </tbody>
+                            ) : (
+                                <tbody className="divide-y divide-border/30">
+                                    {filteredCustomers.map((c, index) => (
+                                        <tr key={c.id} className="group hover:bg-primary/5 transition-all duration-300 ease-in-out">
+                                            {visibleFields.includes("sr") && <td className="px-6 py-4 font-semibold">{index + 1}</td>}
+                                            {visibleFields.includes("customerName") && <td className="px-6 py-4">{c.customerName}</td>}
+                                            {visibleFields.includes("contactPerson") && <td className="px-6 py-4">{c.contactPerson}</td>}
+                                            {visibleFields.includes("email") && <td className="px-6 py-4">{c.email}</td>}
+                                            {visibleFields.includes("country") && <td className="px-6 py-4">{c.country}</td>}
+                                            {visibleFields.includes("customerType") && <td className="px-6 py-4">{c.customerType}</td>}
+                                            {visibleFields.includes("category") && (
+                                                <td className="px-6 py-4">
+                                                    {getCategoryName(c.categoryId)}
+                                                </td>
+                                            )}
+                                            {visibleFields.includes("vatNumber") && <td className="px-6 py-4">{c.vatNumber}</td>}
+                                            {visibleFields.includes("vatRegime") && <td className="px-6 py-4">{c.vatRegime}</td>}
+                                            {visibleFields.includes("vatRate") && <td className="px-6 py-4">{c.defaultVatRate}%</td>}
+                                            {visibleFields.includes("paymentTerms") && <td className="px-6 py-4">{c.paymentTerms}</td>}
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    {/* View */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleView(c.id)}
+                                                        className="h-8 w-8 p-0 hover:bg-blue-50 text-gray-600 hover:text-blue-700 transition-all duration-200 rounded-lg"
+                                                        title="View Customer"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
 
+                                                    {/* Edit */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleEdit(c.id)}
+                                                        className="h-8 w-8 p-0 hover:bg-green-50 text-gray-600 hover:text-green-700 transition-all duration-200 rounded-lg"
+                                                        title="Edit Customer"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </Button>
+
+                                                    {/* Delete */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleDelete(c.id)}
+                                                        className="h-8 w-8 p-0 hover:bg-red-50 text-gray-600 hover:text-red-700 transition-all duration-200 rounded-lg"
+                                                        title="Delete Customer"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            )}
                         </table>
 
-                        {filteredCustomers.length === 0 && (
-                            <div className="text-center py-12">
-                                <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                                <p className="text-muted-foreground font-medium text-lg">No customers found</p>
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    Try adjusting your search or add a new customer
-                                </p>
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -533,7 +895,12 @@ const CustomerDefinition = () => {
                 </DialogContent>
             </Dialog>
 
-
+            <CustomerViewModal
+                isOpen={isViewOpen}
+                onClose={() => setIsViewOpen(false)}
+                customer={viewCustomer}
+                categoryList={categoryList}
+            />
         </DashboardLayout>
     );
 };
