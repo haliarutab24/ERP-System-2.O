@@ -64,6 +64,17 @@ const Invoice = () => {
     new Date().toISOString().split("T")[0]
   );
   const [sendingEmail, setSendingEmail] = useState(false);
+  const customers = [
+    { _id: "cust001", customerName: "John Doe" },
+    { _id: "cust002", customerName: "ABC Traders" },
+    { _id: "cust003", customerName: "XYZ Pvt Ltd" },
+  ];
+
+  const items = [
+    { _id: "item001", itemName: "Premium Vegetable Cooking Oil" },
+    { _id: "item002", itemName: "Office Chair" },
+    { _id: "item003", itemName: "Laptop Stand" },
+  ];
 
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -79,8 +90,76 @@ const Invoice = () => {
   });
   const [loading, setLoading] = useState(false);
 
+  // ---------------- FORM STATES ----------------
+  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [customerVAT, setCustomerVAT] = useState("");
+
+  const [vatRegime, setVatRegime] = useState("");
+
+  const [itemId, setItemId] = useState("");
+  const [description, setDescription] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [vatRate, setVatRate] = useState("");
+
+  // Auto-calculated totals
+  const [totalExclVAT, setTotalExclVAT] = useState(0);
+  const [vatAmount, setVatAmount] = useState(0);
+  const [totalInclVAT, setTotalInclVAT] = useState(0);
+  // Multiple items list
+  const [invoiceItems, setInvoiceItems] = useState([]);
+
+  // Auto calculate totals
+  useEffect(() => {
+    const qty = Number(quantity) || 0;
+    const price = Number(unitPrice) || 0;
+    const vat = Number(vatRate) || 0;
+
+    const excl = qty * price;
+    const vatAmt = (excl * vat) / 100;
+    const incl = excl + vatAmt;
+
+    setTotalExclVAT(excl);
+    setVatAmount(vatAmt);
+    setTotalInclVAT(incl);
+  }, [quantity, unitPrice, vatRate]);
+
   const { token } = useAuth();
   const pdfRef = useRef();
+
+  // Add item to array
+  const handleAddItem = () => {
+    if (!itemId || !description || !quantity || !unitPrice) {
+      toast.error("Please fill all item fields");
+      return;
+    }
+
+    const newItem = {
+      itemId,
+      description,
+      quantity: Number(quantity),
+      unitPrice: Number(unitPrice),
+      vatRate: Number(vatRate) / 100, // convert 20 → 0.20
+      totalExclVAT,
+      vatAmount,
+      totalInclVAT,
+    };
+
+    setInvoiceItems([...invoiceItems, newItem]);
+
+    // Reset fields
+    setItemId("");
+    setDescription("");
+    setQuantity("");
+    setUnitPrice("");
+    setVatRate("");
+    setTotalExclVAT(0);
+    setVatAmount(0);
+    setTotalInclVAT(0);
+
+    toast.success("Item added");
+  };
+
   // fetch invoice
   const fetchInvoices = async () => {
     try {
@@ -125,28 +204,27 @@ const Invoice = () => {
   }, [invoiceData, isAddOpen, isEditMode]);
 
   const filteredInvoice = invoiceData
-  .map((inv) => ({
-    _id: inv._id, // ✅ include this
-    invoiceNo: inv.invoiceNo,
-    date: new Date(inv.invoiceDate).toLocaleDateString(),
-    customerName: inv.customer?.customerName || inv.customerName, // ✅ fix
-    phoneNumber: inv.customer?.phoneNumber, // ✅ optional: add for WhatsApp
-    description: inv.items?.[0]?.description || "-",
-    quantity: inv.items?.[0]?.quantity || 0,
-    unit: inv?.items[0].unitPrice,
-    vatRate: (inv.items?.[0]?.vatRate || 0) * 100,
-    totalExclVAT: inv.netTotal,
-    vatAmount: inv.vatTotal,
-    totalInclVAT: inv.grandTotal,
-  }))
-  .filter(
-    (invoice) =>
-      invoice.customerName
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      invoice.invoiceNo?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+    .map((inv) => ({
+      _id: inv._id, // ✅ include this
+      invoiceNo: inv.invoiceNo,
+      date: new Date(inv.invoiceDate).toLocaleDateString(),
+      customerName: inv.customer?.customerName || inv.customerName, // ✅ fix
+      phoneNumber: inv.customer?.phoneNumber, // ✅ optional: add for WhatsApp
+      description: inv.items?.[0]?.description || "-",
+      quantity: inv.items?.[0]?.quantity || 0,
+      unit: inv?.items[0].unitPrice,
+      vatRate: (inv.items?.[0]?.vatRate || 0) * 100,
+      totalExclVAT: inv.netTotal,
+      vatAmount: inv.vatTotal,
+      totalInclVAT: inv.grandTotal,
+    }))
+    .filter(
+      (invoice) =>
+        invoice.customerName
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        invoice.invoiceNo?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -246,57 +324,57 @@ const Invoice = () => {
   };
   const handleSendOption = async (type, invoice) => {
     // console.log(invoice);
-    
-  if (!invoice) {
-    toast.error("No invoice selected");
-    return;
-  }
 
-  if (type === "email") {
-    try {
-      setSendingEmail(true);
-      toast.loading("Sending invoice via email...");
+    if (!invoice) {
+      toast.error("No invoice selected");
+      return;
+    }
 
-      const payload = {
-        to: invoice.customer?.email || "emanali262770@gmail.com",
-        subject: `Your Invoice ${invoice.invoiceNo} from VESTIAIRE ST. HONORÉ`,
-        message: `Hello ${
-          invoice.customer?.customerName || invoice.customerName || "Customer"
-        }, please find your invoice attached.`,
-      };
+    if (type === "email") {
+      try {
+        setSendingEmail(true);
+        toast.loading("Sending invoice via email...");
 
-      const response = await api.post(
-        `/inventory/invoice/${invoice._id}/send-email`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
+        const payload = {
+          to: invoice.customer?.email || "emanali262770@gmail.com",
+          subject: `Your Invoice ${invoice.invoiceNo} from VESTIAIRE ST. HONORÉ`,
+          message: `Hello ${
+            invoice.customer?.customerName || invoice.customerName || "Customer"
+          }, please find your invoice attached.`,
+        };
+
+        const response = await api.post(
+          `/inventory/invoice/${invoice._id}/send-email`,
+          payload,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        toast.dismiss();
+        if (response.data.success) toast.success("Email sent successfully!");
+        else toast.error(response.data.message || "Failed to send email.");
+      } catch (error) {
+        toast.dismiss();
+        console.error("Email send error:", error);
+        toast.error("Error occurred while sending the email.");
+      } finally {
+        setSendingEmail(false);
+      }
+    }
+
+    if (type === "whatsapp") {
+      // ✅ handle both real and fallback phone
+      const phone = invoice.phoneNumber || "03184486979";
+
+      const msg = encodeURIComponent(
+        `Hello ${invoice.customerName || "Customer"}, your invoice ${
+          invoice.invoiceNo
+        } is ready.`
       );
 
-      toast.dismiss();
-      if (response.data.success) toast.success("Email sent successfully!");
-      else toast.error(response.data.message || "Failed to send email.");
-    } catch (error) {
-      toast.dismiss();
-      console.error("Email send error:", error);
-      toast.error("Error occurred while sending the email.");
-    } finally {
-      setSendingEmail(false);
+      window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+      toast.success("Redirecting to WhatsApp...");
     }
-  }
-
-  if (type === "whatsapp") {
-  // ✅ handle both real and fallback phone
-  const phone = invoice.phoneNumber || "03184486979";
-
-  const msg = encodeURIComponent(
-    `Hello ${invoice.customerName || "Customer"}, your invoice ${invoice.invoiceNo} is ready.`
-  );
-
-  window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
-  toast.success("Redirecting to WhatsApp...");
-}
-
-};
-
+  };
 
   return (
     <DashboardLayout>
@@ -351,127 +429,201 @@ const Invoice = () => {
                       <Input
                         value={invoiceNo}
                         readOnly
-                        className="border-2 focus:ring-2 focus:ring-primary/20 bg-gray-100 cursor-not-allowed"
+                        className="border-2 bg-gray-100 cursor-not-allowed focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
+
                     <div className="space-y-2">
                       <Label>Invoice Date</Label>
                       <Input
                         type="date"
-                        className="border-2 focus:ring-2 focus:ring-primary/20"
                         value={invoiceDate}
                         onChange={(e) => setInvoiceDate(e.target.value)}
+                        className="border-2 focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </div>
 
-                  {/* Customer Name & Country */}
+                  {/* Customer ID + VAT */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">
-                        <User className="w-4 h-4" /> Customer Name
+                        <User className="w-4 h-4" /> Customer
                       </Label>
-                      <Select>
+                      <Select onValueChange={(v) => setSelectedCustomer(v)}>
                         <SelectTrigger className="bg-muted/50 border-2 focus:ring-2 focus:ring-primary/20">
                           <SelectValue placeholder="Select customer" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="cust1">John Doe</SelectItem>
-                          <SelectItem value="cust2">ABC Traders</SelectItem>
-                          <SelectItem value="cust3">XYZ Pvt Ltd</SelectItem>
+                          <SelectItem value="cust001">John Doe</SelectItem>
+                          <SelectItem value="cust002">ABC Traders</SelectItem>
+                          <SelectItem value="cust003">XYZ Pvt Ltd</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Globe className="w-4 h-4" /> Customer Country
-                      </Label>
-                      <Select>
-                        <SelectTrigger className="bg-muted/50 border-2 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="france">France</SelectItem>
-                          <SelectItem value="germany">Germany</SelectItem>
-                          <SelectItem value="uk">United Kingdom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* VAT Info */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Customer VAT No. (optional)</Label>
+                      <Label>Customer VAT No.</Label>
                       <Input
-                        placeholder="FR123456789"
-                        className="border-2 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>VAT Regime</Label>
-                      <Select>
-                        <SelectTrigger className="bg-muted/50 border-2 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue placeholder="Select VAT Regime" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">0%</SelectItem>
-                          <SelectItem value="local">Local VAT</SelectItem>
-                          <SelectItem value="margin">VAT Margin</SelectItem>
-                          <SelectItem value="customer">
-                            Customer Local Rate
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>VAT Rate (%)</Label>
-                      <Input
-                        type="number"
-                        placeholder="20"
-                        className="border-2 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Payment Terms</Label>
-                      <Input
-                        placeholder="Net 30 Days / Due on Receipt"
+                        value={customerVAT}
+                        onChange={(e) => setCustomerVAT(e.target.value)}
+                        placeholder="VAT1234"
                         className="border-2 focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </div>
 
-                  {/* Bank & Notes */}
+                  {/* VAT Regime */}
                   <div className="space-y-2">
-                    <Label>Bank Details</Label>
-                    <textarea
-                      className="w-full rounded-md border-2 p-2 focus:ring-2 focus:ring-primary/20 bg-muted/50"
-                      placeholder="Account Name, IBAN, SWIFT..."
-                    />
+                    <Label>VAT Regime</Label>
+                    <Select onValueChange={(v) => setVatRegime(v)}>
+                      <SelectTrigger className="bg-muted/50 border-2 focus:ring-2 focus:ring-primary/20">
+                        <SelectValue placeholder="Select VAT Regime" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0%">0%</SelectItem>
+                        <SelectItem value="Local VAT">Local VAT</SelectItem>
+                        <SelectItem value="VAT Margin">VAT Margin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Amount Threshold Flag</Label>
-                      <Input
-                        readOnly
-                        value="Auto: True if total > €10,000"
-                        className="border-2 bg-gray-100"
-                      />
+                  {/* ITEM SECTION */}
+                  <div className="mt-6 p-4 rounded-lg border bg-muted/30">
+                    <h3 className="font-semibold mb-3">Add Item</h3>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Item</Label>
+                        <Select onValueChange={(v) => setItemId(v)}>
+                          <SelectTrigger className="border-2">
+                            <SelectValue placeholder="Select item" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="item001">
+                              Premium Vegetable Cooking Oil
+                            </SelectItem>
+                            <SelectItem value="item002">
+                              Office Chair
+                            </SelectItem>
+                            <SelectItem value="item003">
+                              Laptop Stand
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Input
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Item description"
+                          className="border-2"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Notes / Terms</Label>
-                      <textarea
-                        className="w-full rounded-md border-2 p-2 focus:ring-2 focus:ring-primary/20 bg-muted/50"
-                        placeholder="Optional legal or payment notes..."
-                      />
+
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div className="space-y-2">
+                        <Label>Quantity</Label>
+                        <Input
+                          type="number"
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                          className="border-2"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Unit Price</Label>
+                        <Input
+                          type="number"
+                          value={unitPrice}
+                          onChange={(e) => setUnitPrice(e.target.value)}
+                          className="border-2"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>VAT Rate (%)</Label>
+                        <Input
+                          type="number"
+                          value={vatRate}
+                          onChange={(e) => setVatRate(e.target.value)}
+                          placeholder="20"
+                          className="border-2"
+                        />
+                      </div>
                     </div>
+
+                    {/* Auto totals */}
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div className="space-y-2">
+                        <Label>Total Excl. VAT</Label>
+                        <Input
+                          value={totalExclVAT}
+                          readOnly
+                          className="border-2 bg-gray-100"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>VAT Amount</Label>
+                        <Input
+                          value={vatAmount}
+                          readOnly
+                          className="border-2 bg-gray-100"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Total Incl. VAT</Label>
+                        <Input
+                          value={totalInclVAT}
+                          readOnly
+                          className="border-2 bg-gray-100"
+                        />
+                      </div>
+                    </div>
+
+                    {/* ADD ITEM BUTTON */}
+                    <Button
+                      onClick={handleAddItem}
+                      className="mt-4 w-full bg-primary text-white"
+                    >
+                      Add Item
+                    </Button>
+
+                    {/* DISPLAY ADDED ITEMS */}
+                    {invoiceItems.length > 0 && (
+                      <div className="mt-4 border rounded-lg p-3 bg-white">
+                        <h4 className="font-semibold mb-3">Added Items</h4>
+                        <table className="w-full border">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="p-2 text-left">Description</th>
+                              <th className="p-2 text-left">Qty</th>
+                              <th className="p-2 text-left">Price</th>
+                              <th className="p-2 text-left">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {invoiceItems.map((it, index) => (
+                              <tr key={index} className="border-t">
+                                <td className="p-2">{it.description}</td>
+                                <td className="p-2">{it.quantity}</td>
+                                <td className="p-2">€{it.unitPrice}</td>
+                                <td className="p-2 font-semibold">
+                                  €{it.totalInclVAT}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
 
+                  {/* SAVE BUTTON */}
                   <Button
                     className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200 py-3 text-base font-medium"
                     onClick={handleSaveInvoice}
