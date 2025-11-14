@@ -285,7 +285,7 @@ const CustomerDefinition = () => {
       const payload = {
         customerCode: newCustomer.customerCode,
         customerName: newCustomer.customerName,
-        contactPerson: newCustomer.contactPerson,
+        phoneNumber: newCustomer.contactPerson,
         email: newCustomer.email,
         billingAddress: newCustomer.billingAddress,
         country: newCustomer.country,
