@@ -31,6 +31,7 @@ import ProtectedRoute from "./context/ProtectedRoute";
 import DrafTrack from "./pages/Inventory/DrafTrack";
 import CustomerLedgerReport from "./pages/Reports/CustomerLedgerReport";
 import SupplierLedgerReports from "./pages/Reports/SupplierLedgerReports";
+import PurchasePDFView from "./pages/Inventory/Models/PurchasePDFView";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,8 @@ const App = () => (
             path="/inventory/stock-purchase"
             element={<StockPurchaseDetails />}
           />
+          <Route path="/inventory/purchase-pdf/:id" element={<PurchasePDFView />} />
+
             <Route
             path="/inventory/draft-track"
             element={<DrafTrack />}

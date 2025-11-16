@@ -29,6 +29,7 @@ import {
   Store,
   Loader,
   CreditCard,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -46,6 +47,9 @@ import Pagination from "../../components/Pagination";
 const StockPurchaseDetails = () => {
   const [purchaseNo, setPurchaseNo] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [sizesList, setSizesList] = useState([]);
+  const [sizesLoading, setSizesLoading] = useState(false);
+  const [selectedExistingPdf, setSelectedExistingPdf] = useState(null);
 
   const [purchaseDate, setPurchaseDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -81,12 +85,9 @@ const StockPurchaseDetails = () => {
   const [stockData, setStockData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
   const itemsPerPage = 8;
-  const [openingStock, setOpeningStock] = useState("");
-  const [purchaseRate, setPurchaseRate] = useState("");
-  const [sellingPrice, setSellingPrice] = useState("");
-  const [wholesalePrice, setWholesalePrice] = useState("");
-  const [minStockLevel, setMinStockLevel] = useState("");
+
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const [editItemIndex, setEditItemIndex] = useState(null);
@@ -241,12 +242,33 @@ const StockPurchaseDetails = () => {
       fetchItemNames();
     }
   }, [isAddOpen]);
+
+  const fetchSizesByCategory = async (category) => {
+    try {
+      if (!category) return;
+      setSizesLoading(true);
+
+      const res = await api.get(`/categories/sizes/${category}`);
+
+      if (res.data.success) {
+        setSizesList(res.data.data.sizes || []);
+      } else {
+        setSizesList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching sizes:", error);
+      setSizesList([]);
+    } finally {
+      setSizesLoading(false);
+    }
+  };
+
   // select item name auto select decription
   useEffect(() => {
     if (itemId) {
       const item = itemNames.find((i) => i._id === itemId);
       if (item) {
-        setDescription(item.description || "");
+        fetchSizesByCategory(item.category);
       }
     }
   }, [itemId, itemNames]);
@@ -321,109 +343,75 @@ const StockPurchaseDetails = () => {
     try {
       setSaving(true);
 
-      // 🧩 Individual field validation
-      if (!purchaseNo.trim()) {
-        toast.error("Purchase Number is required");
-        return;
+      // --- Validation
+      if (!purchaseNo.trim()) return toast.error("Purchase Number is required");
+      if (!purchaseDate) return toast.error("Purchase Date is required");
+      if (!supplier) return toast.error("Supplier is required");
+      if (!selectedWarehouse) return toast.error("Warehouse is required");
+      if (purchaseItems.length === 0)
+        return toast.error("Add at least one item");
+
+      // ---- Create FormData (MULTIPART FORM)
+      const formData = new FormData();
+
+      // Simple fields
+      formData.append("purchaseNo", purchaseNo);
+      formData.append("purchaseDate", purchaseDate);
+      formData.append("supplier", supplier);
+      formData.append("warehouse", selectedWarehouse);
+      formData.append("trackingNumber", trackingNumber);
+
+      // Items array EXACT like Postman
+      purchaseItems.forEach((it, index) => {
+        formData.append(`items[${index}][itemId]`, it.itemId);
+        formData.append(`items[${index}][quantity]`, it.quantity);
+        formData.append(`items[${index}][unitCost]`, it.unitCost);
+        formData.append(`items[${index}][size]`, it.size || "");
+      });
+
+      // Totals (same like Postman)
+      const total = purchaseItems.reduce(
+        (sum, i) => sum + i.quantity * i.unitCost,
+        0
+      );
+
+      formData.append("netTotal", total);
+      formData.append("vatTotal", 0);
+      formData.append("grandTotal", total);
+
+      // Supplier Invoice PDF
+      if (pdfFile) {
+        formData.append("supplierInvoice", pdfFile);
       }
-
-      if (!purchaseDate) {
-        toast.error("Purchase Date is required");
-        return;
-      }
-
-      if (!supplier) {
-        toast.error("Supplier is required");
-        return;
-      }
-
-      if (!selectedWarehouse) {
-        toast.error("Warehouse is required");
-        return;
-      }
-
-      // if (!trackingNumber.trim()) {
-      //   toast.error("Tracking Number is required");
-      //   return;
-      // }
-
-      if (purchaseItems.length === 0) {
-        toast.error("Please add at least one item");
-        return;
-      }
-
-      // 🧩 Find warehouse ID
-      const warehouse = warehouses.find((w) => w._id === selectedWarehouse);
-      if (!warehouse?._id) {
-        toast.error("Invalid warehouse selected!");
-        return;
-      }
-
-      // 🧩 Build payload EXACT like Postman
-      const payload = {
-        purchaseNo,
-        purchaseDate,
-        supplier, // supplierId
-        warehouse: warehouse._id,
-        trackingNumber,
-        items: purchaseItems.map((it) => ({
-          itemId: it.itemId,
-          description: it.description,
-          quantity: it.quantity,
-          unitCost: it.unitCost,
-          barcode: it.barcode,
-        })),
-
-        netTotal: purchaseItems.reduce(
-          (sum, i) => sum + i.quantity * i.unitCost,
-          0
-        ),
-        vatTotal: 0,
-        grandTotal: purchaseItems.reduce(
-          (sum, i) => sum + i.quantity * i.unitCost,
-          0
-        ),
-      };
-
-      // 🧩 Correct API (PURCHASE INVOICE)
 
       let res;
 
-      if (isEditMode && editStockId) {
-        // UPDATE MODE (PUT)
-        res = await api.put(`/inventory/purchases/${editStockId}`, payload, {
+      if (isEditMode) {
+        res = await api.put(`/inventory/purchases/${editStockId}`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
           },
         });
       } else {
-        // CREATE MODE (POST)
-        res = await api.post(`/inventory/purchases`, payload, {
+        res = await api.post(`/inventory/purchases`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
           },
         });
       }
 
       if (res.data.success) {
-        toast.success("Purchase added successfully!");
+        toast.success("Purchase saved successfully!");
         fetchStock();
+        resetForm();
         setIsAddOpen(false);
-
-        // Reset
-        setPurchaseItems([]);
-        setPurchaseNo("");
-        setTrackingNumber("");
-        setSupplier("");
-        setSelectedWarehouse("");
-        setPurchaseDate(new Date().toISOString().split("T")[0]);
       } else {
-        toast.error(res.data.message || "Failed to add purchase");
+        toast.error(res.data.message || "Failed to save purchase");
       }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Server error while saving purchase"
-      );
+      toast.error(error.response?.data?.message || "Server error");
     } finally {
       setSaving(false);
     }
@@ -450,17 +438,16 @@ const StockPurchaseDetails = () => {
     setSelectedWarehouse(purchase.warehouse?._id || "");
     setTrackingNumber(purchase.trackingNumber || "");
 
-    // ITEMS (convert API to your form structure)
     const formattedItems = purchase.items.map((it) => ({
       itemId: it.itemId._id,
       itemName: it.itemId.itemName,
-      description: it.description,
       quantity: it.quantity,
       unitCost: it.unitCost,
-      barcode: it.barcode,
+      size: it.size ?? "", // ✅ size added
     }));
 
     setPurchaseItems(formattedItems);
+    setSelectedExistingPdf(purchase.supplierInvoice || null);
   };
 
   const handleDelete = async (ItemId) => {
@@ -506,16 +493,6 @@ const StockPurchaseDetails = () => {
     setIsViewOpen(true);
   };
 
-  const handleRestock = (itemId) => {
-    toast.success(`Initiating restock for #${itemId}`);
-  };
-
-  const getStockStatus = (stock, minStock) => {
-    if (stock <= minStock) return "critical";
-    if (stock <= minStock * 2) return "warning";
-    return "healthy";
-  };
-
   const handleRemoveItem = (index) => {
     setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
   };
@@ -541,7 +518,7 @@ const StockPurchaseDetails = () => {
     setDescription(item.description);
     setQuantity(item.quantity);
     setUnitCost(item.unitCost);
-    // setBarcode(item.barcode);
+    setSize(item.size);
 
     setEditItemIndex(index);
     setIsItemEditMode(true);
@@ -553,6 +530,31 @@ const StockPurchaseDetails = () => {
       setCurrentPage(1);
     }
   }, [filteredStock]);
+
+  const resetForm = () => {
+    setPurchaseNo("");
+    setPurchaseDate(new Date().toISOString().split("T")[0]);
+    setSupplier("");
+    setSelectedWarehouse("");
+    setTrackingNumber("");
+
+    setItemId("");
+    setSize("");
+    setDescription("");
+    setQuantity("");
+    setUnitCost("");
+    setBarcode("");
+
+    setPurchaseItems([]);
+
+    setPdfFile(null);
+
+    setIsEditMode(false);
+    setEditStockId(null);
+    setIsItemEditMode(false);
+    setEditItemIndex(null);
+  };
+  console.log({ stockData });
 
   return (
     <DashboardLayout>
@@ -577,21 +579,16 @@ const StockPurchaseDetails = () => {
               <Download className="w-4 h-4 mr-2" />
               Export Report
             </Button>
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <Dialog
+              open={isAddOpen}
+              onOpenChange={(open) => {
+                setIsAddOpen(open);
+                if (!open) resetForm();
+              }}
+            >
               <DialogTrigger
                 onClick={() => {
-                  // 🧠 Reset edit mode whenever adding new entry
-                  setIsEditMode(false);
-                  setEditStockId(null);
-
-                  // 🧼 Optional — clear input fields
-                  setSelectedItem("");
-                  setSelectedWarehouse("");
-                  setOpeningStock("");
-                  setPurchaseRate("");
-                  setSellingPrice("");
-                  setWholesalePrice("");
-                  setMinStockLevel("");
+                  resetForm();
                 }}
                 asChild
               >
@@ -727,17 +724,6 @@ const StockPurchaseDetails = () => {
                         className="border-2"
                       />
                     </div>
-                    {/* Category Input */}
-                    {/* <div className="space-y-2">
-                      <Label>Category</Label>
-                      <Input
-                        type="text"
-                        placeholder="Enter category"
-                        value={categoryInput}
-                        onChange={(e) => setCategoryInput(e.target.value)}
-                        className="border-2"
-                      />
-                    </div> */}
                   </div>
 
                   {/* ITEM SECTION */}
@@ -783,17 +769,34 @@ const StockPurchaseDetails = () => {
                       {/* Sizes */}
                       <div className="space-y-2">
                         <Label>Size</Label>
-                        <Select onValueChange={(value) => setSize(value)}>
+                        <Select
+                          value={size}
+                          onValueChange={(value) => setSize(value)}
+                        >
                           <SelectTrigger className="border-2">
-                            <SelectValue placeholder="Select Size" />
+                            <SelectValue
+                              placeholder={
+                                sizesLoading ? "Loading..." : "Select Size"
+                              }
+                            />
                           </SelectTrigger>
 
                           <SelectContent>
-                            <SelectItem value="small">Small</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="large">Large</SelectItem>
-                            <SelectItem value="xl">XL</SelectItem>
-                            <SelectItem value="xxl">XXL</SelectItem>
+                            {sizesLoading ? (
+                              <SelectItem disabled value="loading">
+                                <Loader className="w-5 h-5 animate-spin" />{" "}
+                              </SelectItem>
+                            ) : sizesList.length > 0 ? (
+                              sizesList.map((sz) => (
+                                <SelectItem key={sz} value={sz}>
+                                  {sz}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem disabled value="no-sizes">
+                                No sizes found
+                              </SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -933,17 +936,26 @@ const StockPurchaseDetails = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="supplierInvoice">
-                      Supplier Invoice PDF
-                    </Label>
+                    <Label>Supplier Invoice PDF</Label>
+
+                    {/* 🔥 Show existing PDF when editing */}
+                    {isEditMode && selectedExistingPdf && (
+                      <div className="mb-2 p-3 rounded-lg bg-muted/40 border flex justify-between items-center">
+                        <span className="text-sm font-medium">
+                          {selectedExistingPdf.originalName}
+                        </span>
+                      </div>
+                    )}
+
                     <Input
                       id="supplierInvoice"
                       type="file"
                       accept="application/pdf"
                       onChange={(e) => setPdfFile(e.target.files[0])}
-                      className="border-2"
+                      className="border-2 cursor-pointer"
                     />
                   </div>
+
                   {/* SAVE BUTTON */}
                   <Button
                     disabled={saving}
@@ -1100,7 +1112,7 @@ const StockPurchaseDetails = () => {
         </Card>
 
         {/* Stock Table with Actions Field */}
-      
+
         <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-500 bg-gradient-to-br from-background to-muted/5 overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20 pb-4">
             <div className="flex items-center justify-between">
@@ -1303,6 +1315,25 @@ const StockPurchaseDetails = () => {
                         {visibleFields.includes("actions") && (
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-1">
+                              {/* Pdf */}
+                              {purchase.supplierInvoice?.url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    window.open(
+                                      `/inventory/purchase-pdf/${purchase._id}`,
+                                      "_blank"
+                                    )
+                                  }
+                                >
+                                  <FileText
+                                    size={16}
+                                    className="text-red-600"
+                                  />
+                                </Button>
+                              )}
+
                               {/* VIEW (Always) */}
                               <Button
                                 variant="ghost"

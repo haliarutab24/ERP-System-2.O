@@ -14,12 +14,13 @@ const StockViewModal = ({ isOpen, onClose, stock }) => {
         <DialogHeader className="border-b border-border/40 pb-3">
           <DialogTitle className="text-xl sm:text-2xl font-semibold text-foreground flex items-center gap-2">
             <Eye className="w-5 h-5 text-primary" />
-           Stock Purchase Details
+            Stock Purchase Details
           </DialogTitle>
         </DialogHeader>
 
         {stock ? (
           <div className="space-y-5 pt-4 px-2">
+            
             {/* ================= PURCHASE DETAILS ================= */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm sm:text-base">
               <p className="font-medium text-muted-foreground">Purchase No:</p>
@@ -45,6 +46,27 @@ const StockViewModal = ({ isOpen, onClose, stock }) => {
               <p className="font-medium text-muted-foreground">Tracking No:</p>
               <p className="font-semibold">{stock.trackingNumber}</p>
 
+              {/* 🔥 PDF BUTTON (only if exists) */}
+              {stock.supplierInvoice?.url && (
+                <>
+                  <p className="font-medium text-muted-foreground">
+                    Invoice PDF:
+                  </p>
+                  <p className="font-semibold flex items-center gap-3">
+                    <span>{stock.supplierInvoice.originalName}</span>
+
+                    <button
+                      onClick={() =>
+                        window.open(stock.supplierInvoice.url, "_blank")
+                      }
+                      className="p-2 rounded-md bg-primary/10 text-primary hover:bg-primary hover:text-white transition"
+                    >
+                      📄 View
+                    </button>
+                  </p>
+                </>
+              )}
+
               <p className="font-medium text-muted-foreground">Status:</p>
               <p className="font-semibold">{stock.status}</p>
             </div>
@@ -60,10 +82,10 @@ const StockViewModal = ({ isOpen, onClose, stock }) => {
                       <tr>
                         <th className="p-2 font-medium">#</th>
                         <th className="p-2 font-medium">Item Name</th>
-                        <th className="p-2 font-medium">Description</th>
+                        <th className="p-2 font-medium">Size</th>
                         <th className="p-2 font-medium">Qty</th>
                         <th className="p-2 font-medium">Unit Cost</th>
-                        <th className="p-2 font-medium">Barcode</th>
+                      
                       </tr>
                     </thead>
 
@@ -79,7 +101,7 @@ const StockViewModal = ({ isOpen, onClose, stock }) => {
                             {itm.itemId?.itemName}
                           </td>
 
-                          <td className="p-2">{itm.description}</td>
+                          <td className="p-2">{itm.size}</td>
 
                           <td className="p-2 font-medium">{itm.quantity}</td>
 
@@ -87,7 +109,7 @@ const StockViewModal = ({ isOpen, onClose, stock }) => {
                             € {itm.unitCost?.toLocaleString()}
                           </td>
 
-                          <td className="p-2 font-mono">{itm.barcode}</td>
+                       
                         </tr>
                       ))}
                     </tbody>
@@ -108,8 +130,6 @@ const StockViewModal = ({ isOpen, onClose, stock }) => {
                 <p className="font-semibold">
                   € {stock.netTotal?.toLocaleString()}
                 </p>
-
-               
 
                 <p className="font-medium text-muted-foreground">
                   Grand Total:
