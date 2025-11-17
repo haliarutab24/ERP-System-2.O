@@ -13,12 +13,7 @@ lerna-debug.log*
 # ⚙️ Node & Environment
 # ============================================
 node_modules/
-.env
-.env.local
-.env.development
-.env.production
-.env.test
-*.env
+
 
 # ============================================
 # 🧱 Build Output
