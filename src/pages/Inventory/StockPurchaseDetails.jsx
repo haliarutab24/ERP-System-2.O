@@ -275,7 +275,6 @@ const StockPurchaseDetails = () => {
     try {
       if (!category) return;
       setSizesLoading(true);
-      console.log("Loggg ", category);
 
       const res = await api.get(`/categories/sizes/${category}`);
 
@@ -421,9 +420,10 @@ const StockPurchaseDetails = () => {
         // user removed existing PDF → send empty string to remove it
         formData.append("supplierInvoice", "");
       }
-      for (let pair of formData.entries()) {
-        console.log(pair[0] + " : " + pair[1]);
-      }
+for (let pair of formData.entries()) {
+  console.log(pair[0] + " : " + pair[1]);
+}
+
 
       let res;
 
@@ -545,40 +545,29 @@ const StockPurchaseDetails = () => {
     setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
   };
 
-  const totalQty = purchaseItems.reduce(
-    (sum, item) => sum + Number(item.quantity),
-    0
-  );
+ 
+ const handleEditItem = (index) => {
+  const item = purchaseItems[index];
+console.log({item});
 
-  const totalUnitCost = purchaseItems.reduce(
-    (sum, item) => sum + Number(item.unitCost),
-    0
-  );
+  setItemId(item.itemId);
+  setDescription(item.description);
+  setQuantity(item.quantity);
+  setUnitCost(item.unitCost);
+  setSize(item.size);
 
-  const totalAmount = purchaseItems.reduce(
-    (sum, item) => sum + item.quantity * item.unitCost,
-    0
-  );
-  const handleEditItem = (index) => {
-    const item = purchaseItems[index];
-    console.log({ item });
+  // ✅ Load VAT fields during edit
+  setVatRegime(item.vatRegime);
+  setVatRate(item.vatRate);
+  setTotalExclVAT(item.totalExclVAT);
+  setVatAmount(item.vatAmount);
+  setTotalInclVAT(item.totalInclVAT);
 
-    setItemId(item.itemId);
-    setDescription(item.description);
-    setQuantity(item.quantity);
-    setUnitCost(item.unitCost);
-    setSize(item.size);
+  setEditItemIndex(index);
+  setIsItemEditMode(true);
+   setAvailableSizes([]);
+};
 
-    // ✅ Load VAT fields during edit
-    setVatRegime(item.vatRegime);
-    setVatRate(item.vatRate);
-    setTotalExclVAT(item.totalExclVAT);
-    setVatAmount(item.vatAmount);
-    setTotalInclVAT(item.totalInclVAT);
-
-    setEditItemIndex(index);
-    setIsItemEditMode(true);
-  };
 
   useEffect(() => {
     const totalPages = Math.ceil(filteredStock.length / itemsPerPage);
@@ -623,6 +612,7 @@ const StockPurchaseDetails = () => {
     setEditStockId(null);
     setIsItemEditMode(false);
     setEditItemIndex(null);
+    setAvailableSizes([]);
   };
 
   console.log({ stockData });
@@ -824,23 +814,8 @@ const StockPurchaseDetails = () => {
                               setUnitCost(item.purchasePrice || 0);
 
                               // Fetch Sizes With Stock
-                              try {
-                                const res = await api.get(
-                                  `/categories/sizes/${item.category}`
-                                );
+                             fetchSizesByCategory(item.category);
 
-                                const sizes = (res.data.data?.sizes || []).map(
-                                  (s) => ({
-                                    size: s.size,
-                                    stock: s.stock,
-                                  })
-                                );
-
-                                setAvailableSizes(sizes);
-                              } catch (error) {
-                                console.log("Failed to fetch sizes:", error);
-                                setAvailableSizes([]);
-                              }
                             } else {
                               setAvailableSizes([]);
                             }
@@ -899,7 +874,6 @@ const StockPurchaseDetails = () => {
                         <Input
                           type="number"
                           value={quantity}
-                          placeholder="0"
                           onChange={(e) => {
                             const value = Number(e.target.value);
 
@@ -907,20 +881,20 @@ const StockPurchaseDetails = () => {
                               (x) => x.size === size
                             );
 
-                            // if (availableSizes.length > 0 && !selectedSizeObj) {
-                            //   setQuantity(value);
-                            //   return;
-                            // }
+                            if (availableSizes.length > 0 && !selectedSizeObj) {
+                              setQuantity(value);
+                              return;
+                            }
 
-                            // if (
-                            //   availableSizes.length > 0 &&
-                            //   value > selectedSizeObj.stock
-                            // ) {
-                            //   toast.error(
-                            //     `Only ${selectedSizeObj.stock} units available in stock`
-                            //   );
-                            //   return;
-                            // }
+                            if (
+                              availableSizes.length > 0 &&
+                              value > selectedSizeObj.stock
+                            ) {
+                              toast.error(
+                                `Only ${selectedSizeObj.stock} units available in stock`
+                              );
+                              return;
+                            }
 
                             setQuantity(value);
                             setQtyError("");
