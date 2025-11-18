@@ -891,7 +891,7 @@ const Invoice = () => {
       toast.success("Redirecting to WhatsApp...");
     }
   };
-  console.log({ finalInvoices, draftInvoices });
+  console.log({  draftInvoices });
 
   return (
     <DashboardLayout>
@@ -1264,7 +1264,7 @@ const Invoice = () => {
                         <h4 className="font-semibold mb-3">Added Items</h4>
                         <table className="w-full border">
                           <thead className="bg-gray-100">
-                            <tr>
+                            <tr className=" whitespace-nowrap">
                               <th className="p-2 text-left">Item</th>
                               {/* 🔥 Auto-hide Size column */}
                               {invoiceItems.some((it) => it.size) && (
@@ -1524,7 +1524,7 @@ const Invoice = () => {
                       Item / Product
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
-                      Description
+                      Sizes
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
                       Quantity

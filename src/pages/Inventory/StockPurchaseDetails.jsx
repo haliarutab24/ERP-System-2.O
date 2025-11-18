@@ -57,7 +57,6 @@ const StockPurchaseDetails = () => {
   const [totalInclVAT, setTotalInclVAT] = useState(0);
   const [availableSizes, setAvailableSizes] = useState([]);
 
-
   const [purchaseDate, setPurchaseDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -108,7 +107,7 @@ const StockPurchaseDetails = () => {
       toast.error("Please fill all Items required fields");
       return;
     }
-     if (!vatRegime) {
+    if (!vatRegime) {
       toast.error("Select a VAT regime");
       return;
     }
@@ -231,6 +230,8 @@ const StockPurchaseDetails = () => {
     }
   };
 
+  console.log({ itemNames });
+
   const fetchWarehouses = async () => {
     try {
       setWarehouseLoading(true);
@@ -275,26 +276,23 @@ const StockPurchaseDetails = () => {
     }
   }, [isAddOpen]);
 
-  const fetchSizesByCategory = async (category) => {
+  const fetchSizesByCategory = async (category, itemName) => {
     try {
-      if (!category) return;
+      if (!category || !itemName) return;
       setSizesLoading(true);
 
-      const res = await api.get(`/categories/sizes/${category}`);
+      const res = await api.get(
+        `/categories/sizes/${category}?itemName=${itemName}`
+      );
 
       if (res.data.success) {
         const sizes = res.data.data.sizes || [];
         setSizesList(sizes.map((s) => s.size));
-
-        setAvailableSizes(sizes); // 🔥 FIX: size dropdown now shows
+        setAvailableSizes(sizes);
       } else {
         setSizesList([]);
-        setAvailableSizes([]); // 🔥 Also reset when empty
+        setAvailableSizes([]);
       }
-    } catch (error) {
-      console.error("Error fetching sizes:", error);
-      setSizesList([]);
-      setAvailableSizes([]);
     } finally {
       setSizesLoading(false);
     }
@@ -305,7 +303,7 @@ const StockPurchaseDetails = () => {
     if (itemId) {
       const item = itemNames.find((i) => i._id === itemId);
       if (item) {
-        fetchSizesByCategory(item.category);
+        fetchSizesByCategory(item.category, item.itemName);
       }
     }
   }, [itemId, itemNames]);
@@ -456,7 +454,6 @@ const StockPurchaseDetails = () => {
         fetchStock();
         resetForm();
         setIsAddOpen(false);
-       
       } else {
         toast.error(res.data.message || "Failed to save purchase");
       }
@@ -534,7 +531,7 @@ const StockPurchaseDetails = () => {
         error.response?.data?.message || "Server error while deleting"
       );
     } finally {
-      setTimeout(() => setLoading(false), 500);
+      setTimeout(() => setLoading(false), 1000);
     }
   };
 
@@ -821,7 +818,10 @@ const StockPurchaseDetails = () => {
                               setUnitCost(item.purchasePrice || 0);
 
                               // Fetch Sizes With Stock
-                              fetchSizesByCategory(item.category);
+                              fetchSizesByCategory(
+                                item.category,
+                                item.itemName
+                              );
                             } else {
                               setAvailableSizes([]);
                             }
@@ -882,8 +882,7 @@ const StockPurchaseDetails = () => {
                           value={quantity}
                           onChange={(e) => {
                             const value = Number(e.target.value);
-                              
-                           
+
                             setQuantity(value);
                           }}
                           className="border-2"
@@ -994,7 +993,7 @@ const StockPurchaseDetails = () => {
                         <h4 className="font-semibold mb-3">Added Items</h4>
                         <table className="w-full border">
                           <thead className="bg-gray-100">
-                            <tr>
+                            <tr className=" whitespace-nowrap">
                               <th className="p-2 text-left">Item</th>
 
                               {/* Hide Size column header if no size exists for any item */}
